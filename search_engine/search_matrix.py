@@ -1,8 +1,9 @@
 import os
 import json
 import numpy as np
-from scipy.sparse import csr_matrix, spmatrix
+from scipy.sparse import diags, csr_matrix, spmatrix
 from scipy.sparse.linalg import svds
+from sklearn.preprocessing import normalize
 from typing import List, Dict, Tuple
 
 
@@ -13,6 +14,8 @@ class SearchMatrix:
     Attributes:
         words (List[str]): List of unique words.
         pages (List[Tuple[str, str, str]]): List of (URL, Title, Description) tuples.
+        svd_rank (int): Rank used for SVD approximation.
+        use_idf (bool): Indicates whether IDF weighting was applied to the word frequency matrix.
         word_frequency (spmatrix): Sparse matrix of word frequencies.
         word_frequency_low_rank (spmatrix): Low-rank approximation of word_frequency.
         word_to_index (Dict[str, int]): Mapping from word to its index in words.
@@ -25,6 +28,7 @@ class SearchMatrix:
         pages: List[Tuple[str, str, str]],
         word_frequency: spmatrix,
         svd_rank: int,
+        use_idf: bool = False,
     ):
         """
         Initializes the SearchMatrix and computes the low-rank approximation.
@@ -34,17 +38,55 @@ class SearchMatrix:
             pages (List[Tuple[str, str, str]]): List of (URL, Title, Description) tuples.
             word_frequency (spmatrix): Sparse matrix of word frequencies.
             svd_rank (int): Rank for SVD approximation.
+            use_idf (bool): Whether to apply inverse document frequency (IDF) weighting. Default is False.
         """
         self.words = words
         self.pages = pages
+        self.use_idf = use_idf
         self.svd_rank = svd_rank
 
         # Reverse mappings for fast lookup
         self.word_to_index = {word: i for i, word in enumerate(words)}
         self.page_to_index = {url: i for i, (url, _, _) in enumerate(pages)}
 
+        if use_idf:
+            word_frequency = self.__preprocess_with_idf(word_frequency)
+
+        word_frequency = self.__normalize(word_frequency)
+
         self.word_frequency = word_frequency
         self.word_frequency_low_rank = self.__compute_svd(svd_rank)
+
+    def __preprocess_with_idf(self, matrix: spmatrix) -> spmatrix:
+        """
+        Applies inverse document frequency (IDF) weighting to the word frequency matrix.
+
+        Args:
+            matrix (spmatrix): The word frequency matrix.
+
+        Returns:
+            spmatrix: The matrix after applying IDF weighting.
+        """
+        _, page_count = matrix.shape
+
+        page_count_per_term = np.array(matrix.getnnz(axis=1), dtype=np.float64)
+        page_count_per_term[page_count_per_term == 0] = page_count
+
+        idf = np.log(page_count / page_count_per_term)
+
+        return diags(idf) @ matrix
+
+    def __normalize(self, matrix: spmatrix) -> spmatrix:
+        """
+        Normalizes the word frequency matrix column-wise (per document).
+
+        Args:
+            matrix (spmatrix): The word frequency matrix.
+
+        Returns:
+            spmatrix: The normalized matrix.
+        """
+        return normalize(matrix, axis=0)
 
     def __compute_svd(self, rank: int) -> spmatrix:
         """
@@ -74,13 +116,16 @@ class SearchMatrix:
         )
 
 
-def load_search_matrix(folder_path: str, svd_rank: int) -> SearchMatrix:
+def load_search_matrix(
+    folder_path: str, svd_rank: int, use_idf: bool = False
+) -> SearchMatrix:
     """
     Loads JSON files from a folder and constructs a SearchMatrix.
 
     Args:
         folder_path (str): Path to the folder containing JSON files.
         svd_rank (int): Rank for SVD approximation.
+        use_idf (bool): Whether to apply IDF weighting to the word frequency matrix.
 
     Returns:
         SearchMatrix: The constructed SearchMatrix instance.
@@ -123,4 +168,4 @@ def load_search_matrix(folder_path: str, svd_rank: int) -> SearchMatrix:
 
     word_frequency = csr_matrix((data, (rows, cols)))
 
-    return SearchMatrix(words, pages, word_frequency, svd_rank)
+    return SearchMatrix(words, pages, word_frequency, svd_rank, use_idf)
