@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Search Engine</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+      }
+      .container {
+        max-width: 800px;
+        margin: 20px auto;
+        padding: 0 20px;
+      }
+      h1 {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+
+      /* Searchbar section */
+      .search-bar-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+      }
+      .search-bar {
+        flex: 1;
+        padding: 10px;
+        font-size: 16px;
+        border-radius: 5px 0 0 5px;
+        border: 1px solid #ccc;
+        box-sizing: border-box;
+      }
+      .search-button {
+        padding: 10px 20px;
+        font-size: 16px;
+        border: none;
+        border-radius: 0 5px 5px 0;
+        background-color: #4caf50;
+        color: white;
+        cursor: pointer;
+        box-sizing: border-box;
+      }
+      .search-button:hover {
+        background-color: #45a049;
+      }
+
+      /* Options section */
+      .options {
+        display: flex;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+      .options label {
+        margin-right: 10px;
+      }
+      .options input[type="checkbox"],
+      .options input[type="number"] {
+        margin-right: 10px;
+      }
+      .options input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+      }
+      .options input[type="number"] {
+        width: 80px;
+        padding: 5px;
+        font-size: 16px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        box-sizing: border-box;
+      }
+      .options .separator {
+        margin: 0 10px;
+      }
+
+      /* Results section */
+      .result {
+        margin-bottom: 20px;
+        padding: 15px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .result .title {
+        font-size: 18px;
+        font-weight: bold;
+        color: #1a0dab;
+        text-decoration: underline;
+      }
+      .result .description {
+        font-size: 16px;
+        color: #666;
+        margin-bottom: 5px;
+      }
+      .result .match {
+        font-size: 14px;
+        color: #999;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Search Engine</h1>
+      <form method="post">
+        <div class="search-bar-container">
+          <input
+            type="text"
+            name="query"
+            class="search-bar"
+            placeholder="What are you looking for..."
+            value="{{ request.form.get('query', '') }}"
+          />
+          <button type="submit" class="search-button">Search</button>
+        </div>
+        <div class="options">
+          <label for="noise_removal">Noise Removal</label>
+          <input
+            type="checkbox"
+            name="noise_removal"
+            id="noise_removal"
+            {%
+            if
+            noise_removal
+            %}checked{%
+            endif
+            %}
+          />
+          <span class="separator">|</span>
+          <label for="num_results">Number of Results</label>
+          <input
+            type="number"
+            name="num_results"
+            value="{{ num_of_results or 5 }}"
+            min="1"
+          />
+        </div>
+      </form>
+      {% if result %}
+      <hr />
+      <h2>{{ result|length }} Search Results</h2>
+      {% for item in result %}
+      <div class="result">
+        <a href="{{ item[0] }}" class="title">{{ item[1] or "No Title" }}</a>
+        <br />
+        <p class="description">{{ item[2] or "No Description" }}</p>
+        <p>Match: {{ item[3] }}</p>
+      </div>
+      {% endfor %} {% endif %}
+    </div>
+  </body>
+</html>
